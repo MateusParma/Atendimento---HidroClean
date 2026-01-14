@@ -5,66 +5,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hidro Clean - CRM & Respostas</title>
-    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        :root { --blue: #2563eb; --red: #ef4444; --bg: #f8fafc; }
-        body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: var(--bg); display: flex; align-items: center; justify-content: center; min-height: 100vh; overflow: hidden; }
-        
-        #main-loading { text-align: center; transition: opacity 0.3s ease; }
-        .spinner { width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: var(--blue); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        
-        #error-overlay { display: none; position: fixed; inset: 0; background: white; padding: 2rem; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-        .error-card { background: white; border: 1px solid #fee2e2; padding: 2.5rem; border-radius: 2rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.1); max-width: 420px; width: 100%; }
-        .btn-retry { background: var(--blue); color: white; border: none; padding: 1rem 2rem; border-radius: 1rem; font-weight: 800; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; width: 100%; margin-top: 1.5rem; }
+        body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; background-color: #f8fafc; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        #root { min-height: 100vh; }
     </style>
-
     <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@18.3.1",
-    "react-dom": "https://esm.sh/react-dom@18.3.1",
-    "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+    "react": "https://esm.sh/react@19.0.0",
+    "react-dom": "https://esm.sh/react-dom@19.0.0",
+    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
+    "react/jsx-runtime": "https://esm.sh/react@19.0.0/jsx-runtime",
     "@google/genai": "https://esm.sh/@google/genai@1.3.0",
     "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.45.0",
     "lucide-react": "https://esm.sh/lucide-react@0.460.0?external=react",
-    "react-dom/": "https://esm.sh/react-dom@18.3.1/",
-    "react/": "https://esm.sh/react@18.3.1/"
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/"
   }
 }
 </script>
-
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
-<body>
-    <div id="root" class="w-full h-full">
-        <div id="main-loading">
-            <div class="spinner"></div>
-            <h1 style="font-weight: 900; color: #1e293b; letter-spacing: -1px; margin: 0;">HIDRO CLEAN</h1>
-            <p style="font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-top: 5px;">A carregar módulos...</p>
-        </div>
-    </div>
-
-    <div id="error-overlay">
-        <div class="error-card">
-            <div style="background: #fef2f2; width: 50px; height: 50px; border-radius: 15px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; color: var(--red); font-weight: 900; font-size: 24px;">!</div>
-            <h2 style="font-weight: 900; margin-bottom: 0.5rem; color: #1e293b;">ERRO DE ARRANQUE</h2>
-            <div id="error-msg" style="font-family: monospace; font-size: 10px; color: #94a3b8; background: #f1f5f9; padding: 10px; border-radius: 8px; word-break: break-all; margin-bottom: 1.5rem;"></div>
-            <button class="btn-retry" onclick="window.location.reload()">Tentar Novamente</button>
-        </div>
-    </div>
-
-    <script>
-        window.onerror = function(msg, url, line) {
-            const overlay = document.getElementById('error-overlay');
-            const msgDiv = document.getElementById('error-msg');
-            if (overlay && msgDiv) {
-                overlay.style.display = 'flex';
-                msgDiv.innerText = msg + ' (Linha: ' + line + ')';
-            }
-            return false;
-        };
-    </script>
+<body class="bg-slate-50 text-slate-900">
+    <div id="root"></div>
     <script type="module" src="./index.js"></script>
 </body>
 </html>

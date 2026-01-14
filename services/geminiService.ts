@@ -3,24 +3,22 @@ import { GoogleGenAI } from "@google/genai";
 
 const SYSTEM_INSTRUCTION = `
 Você é o assistente oficial de IA da "Hidro Clean Canalizações" (Portugal).
-Gere respostas curtas e proativas em PT-PT. Sugira sempre visita técnica.
+Sua tarefa é gerar respostas curtas, profissionais e cordiais para clientes.
+Serviços principais: Pesquisa de fugas de água (sem partir), Desentupimentos, Limpeza de fossas e Inspeções de vídeo.
+Diretrizes:
+- Use Português de Portugal (PT-PT).
+- Seja direto e proativo.
+- Sempre sugira uma visita técnica para orçamentos precisos.
+- Mencione que somos rápidos e deixamos tudo limpo.
 `;
 
 export async function generateAIResponse(prompt: string): Promise<string> {
-  let apiKey = '';
+  // Verificação segura para evitar erro de 'process is not defined'
+  const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : (window as any).API_KEY;
   
-  try {
-    if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
-      apiKey = process.env.API_KEY;
-    } else if ((window as any).API_KEY) {
-      apiKey = (window as any).API_KEY;
-    }
-  } catch (e) {
-    console.warn("Ambiente sem acesso a variáveis de processo.");
-  }
-
   if (!apiKey) {
-    return "Erro: Configuração de API pendente no servidor.";
+    console.error("API_KEY não encontrada nas variáveis de ambiente.");
+    return "Erro: Chave de API não configurada.";
   }
 
   const ai = new GoogleGenAI({ apiKey });
@@ -35,9 +33,9 @@ export async function generateAIResponse(prompt: string): Promise<string> {
       },
     });
 
-    return response.text || "Sem resposta da IA.";
+    return response.text || "Desculpe, não consegui gerar a resposta.";
   } catch (error) {
-    console.error("AI Service Error:", error);
-    throw new Error("Falha ao gerar resposta.");
+    console.error("Erro na IA:", error);
+    throw new Error("Falha na comunicação com o assistente.");
   }
 }
