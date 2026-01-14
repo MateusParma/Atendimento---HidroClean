@@ -7,33 +7,52 @@
     <title>Hidro Clean - Assistente de Respostas</title>
     
     <script>
+        // Monitor de Erros em Tempo Real
         window.onerror = function(msg, url, lineNo, columnNo, error) {
-            console.error('Erro Global:', msg, url, lineNo);
+            console.error('Erro Detetado:', msg);
             const errDet = document.getElementById('error-details');
             if (errDet) errDet.innerText = `Erro: ${msg}\nFicheiro: ${url}\nLinha: ${lineNo}`;
             document.getElementById('diagnostic-card')?.classList.remove('hidden');
+            document.getElementById('main-spinner')?.classList.add('hidden');
             return false;
         };
 
+        // Se após 6 segundos o React não marcar REACT_INITIALIZED, mostramos o erro
         setTimeout(() => {
             if (!window.REACT_INITIALIZED) {
                 document.getElementById('loading-timeout-msg')?.classList.remove('hidden');
                 document.getElementById('diagnostic-card')?.classList.remove('hidden');
                 document.getElementById('main-spinner')?.classList.add('hidden');
             }
-        }, 8000);
+        }, 6000);
     </script>
 
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; margin: 0; padding: 0; overflow-x: hidden; }
-        .full-center { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; }
-        .spinner { width: 50px; height: 50px; border: 5px solid #e2e8f0; border-top: 5px solid #2563eb; border-radius: 50%; animation: spin 1s linear infinite; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1e293b; }
+        
+        /* Layout de Carregamento/Erro */
+        #root { 
+            min-height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 20px;
+            text-align: center;
+        }
+
+        .spinner { 
+            width: 48px; height: 48px; 
+            border: 5px solid #e2e8f0; border-top: 5px solid #2563eb; 
+            border-radius: 50%; animation: spin 1s linear infinite; 
+            margin-bottom: 24px;
+        }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .hidden { display: none !important; }
-        #root { width: 100%; }
     </style>
 
     <script type="importmap">
@@ -51,40 +70,38 @@
 }
 </script>
 </head>
-<body class="bg-slate-50 text-slate-900">
-    <div id="root" class="full-center">
+<body>
+    <div id="root">
+        <!-- Estado Inicial: Carregamento -->
         <div id="main-spinner" class="flex flex-col items-center">
-            <div class="spinner mb-6"></div>
-            <h2 class="text-2xl font-black text-blue-600 tracking-tighter animate-pulse">HIDRO CLEAN</h2>
-            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">A preparar o seu workspace...</p>
+            <div class="spinner"></div>
+            <h2 class="text-2xl font-black text-blue-600 tracking-tighter animate-pulse uppercase">Hidro Clean</h2>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">A carregar módulos do sistema...</p>
         </div>
         
-        <div id="loading-timeout-msg" class="hidden mt-8 text-center px-4 animate-in fade-in slide-in-from-bottom-4">
-            <p class="text-slate-500 font-bold">O sistema está a demorar a responder.</p>
-            <p class="text-[10px] text-slate-400 uppercase tracking-tighter">Verifique a sua ligação ou o diagnóstico abaixo.</p>
+        <!-- Estado: Erro/Timeout (Escondido por padrão) -->
+        <div id="loading-timeout-msg" class="hidden mb-6">
+            <p class="text-slate-500 font-bold">O arranque do sistema está a demorar demasiado.</p>
         </div>
 
-        <div id="diagnostic-card" class="hidden mt-10 p-8 bg-white border border-red-100 rounded-[2.5rem] shadow-2xl max-w-md w-full mx-4 animate-in zoom-in duration-300">
-            <div class="flex items-center space-x-3 mb-6">
+        <div id="diagnostic-card" class="hidden p-8 bg-white border border-red-100 rounded-[2.5rem] shadow-2xl max-w-md w-full animate-in zoom-in duration-300">
+            <div class="flex items-center space-x-3 mb-6 justify-center">
                 <div class="w-10 h-10 bg-red-100 text-red-600 rounded-xl flex items-center justify-center font-black">!</div>
-                <div>
-                    <h3 class="text-red-600 font-black uppercase text-xs tracking-widest leading-none">Painel de Diagnóstico</h3>
-                    <p class="text-[9px] text-slate-400 font-bold mt-1">FALHA NA INICIALIZAÇÃO DO REACT</p>
+                <div class="text-left">
+                    <h3 class="text-red-600 font-black uppercase text-xs tracking-widest leading-none">Falha Crítica</h3>
+                    <p class="text-[9px] text-slate-400 font-bold mt-1 uppercase">O React não conseguiu carregar</p>
                 </div>
             </div>
             
-            <div class="bg-slate-50 p-4 rounded-2xl mb-6 border border-slate-100">
+            <div class="bg-slate-50 p-4 rounded-2xl mb-6 border border-slate-100 text-left">
                 <p id="error-details" class="text-[10px] font-mono text-slate-500 break-all leading-relaxed">
-                    Aguardando deteção de erro no módulo principal...
+                    Deteção de erro em curso... Verifique a consola do navegador.
                 </p>
             </div>
 
             <div class="flex flex-col gap-3">
                 <button onclick="window.location.reload()" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-black py-4 rounded-2xl uppercase tracking-widest shadow-xl shadow-blue-100 transition-all active:scale-95">
-                    Recarregar Aplicação
-                </button>
-                <button onclick="alert(document.querySelector('script[type=importmap]').innerText)" class="w-full bg-slate-100 text-slate-500 text-[9px] font-black py-3 rounded-xl uppercase hover:bg-slate-200">
-                    Inspecionar Import Map
+                    Recarregar App
                 </button>
             </div>
         </div>
