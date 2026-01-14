@@ -3,38 +3,46 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 
-const startApp = () => {
-  const rootElement = document.getElementById('root');
-  const errorDisplay = document.getElementById('error-display');
-
-  if (!rootElement) return;
+const renderApp = () => {
+  const container = document.getElementById('root');
+  if (!container) return;
 
   try {
-    const root = createRoot(rootElement);
+    const root = createRoot(container);
     root.render(
       <React.StrictMode>
         <App />
       </React.StrictMode>
     );
-    console.log("Hidro Clean montado com sucesso.");
-  } catch (error) {
-    console.error("Falha ao renderizar App:", error);
-    if (rootElement) rootElement.style.display = 'none';
-    if (errorDisplay) errorDisplay.style.display = 'block';
+    console.log("React Rendered Successfully");
+  } catch (err: any) {
+    console.error("React Render Error:", err);
+    showError(err.message);
   }
 };
 
-// Garante que o DOM está pronto e lida com possíveis erros de importação
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', startApp);
-} else {
-  startApp();
+const showError = (msg: string) => {
+  const errorDisplay = document.getElementById('error-display');
+  const errorDetails = document.getElementById('error-details');
+  if (errorDisplay) errorDisplay.style.display = 'flex';
+  if (errorDisplay) errorDisplay.style.flexDirection = 'column';
+  if (errorDetails) errorDetails.innerText = msg;
+};
+
+// Tenta iniciar a aplicação
+try {
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    renderApp();
+  } else {
+    window.addEventListener('DOMContentLoaded', renderApp);
+  }
+} catch (e: any) {
+  showError(e.message);
 }
 
-// Global error handler para capturar falhas de rede/módulos
+// Handler para falhas catastróficas de rede/módulos
 window.addEventListener('error', (event) => {
-  if (event.message.includes('import') || event.message.includes('Script error')) {
-    const errorDisplay = document.getElementById('error-display');
-    if (errorDisplay) errorDisplay.style.display = 'block';
+  if (event.message && (event.message.includes('import') || event.message.includes('Script error'))) {
+    showError("Falha ao carregar bibliotecas externas (esm.sh). Verifique a sua ligação à internet.");
   }
 });

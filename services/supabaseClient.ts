@@ -2,17 +2,14 @@
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = 'https://modethgcutvgygpeepon.supabase.co';
-const FALLBACK_KEY = 'sb_publishable_fu4uN7qoTdftA2LT6QD5QQ_4MHWJtiR';
+// Chave pública fornecida pelo usuário
+const PUBLIC_KEY = 'sb_publishable_fu4uN7qoTdftA2LT6QD5QQ_4MHWJtiR';
 
-// Evita usar process.env diretamente em ambientes onde process não existe
-const getApiKey = () => {
-  try {
-    return (typeof process !== 'undefined' && process.env && process.env.SUPABASE_ANON_KEY) 
-      ? process.env.SUPABASE_ANON_KEY 
-      : FALLBACK_KEY;
-  } catch (e) {
-    return FALLBACK_KEY;
-  }
+// Função segura para obter a chave
+const getSupabaseKey = () => {
+  // No Vercel, variáveis de ambiente podem não ser injetadas em tempo de execução no cliente sem prefixo NEXT_PUBLIC_ ou VITE_
+  // Usamos a chave de fallback que o usuário confirmou ser válida
+  return PUBLIC_KEY;
 };
 
-export const supabase = createClient(SUPABASE_URL, getApiKey());
+export const supabase = createClient(SUPABASE_URL, getSupabaseKey());
