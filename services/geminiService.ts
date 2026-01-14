@@ -13,17 +13,19 @@ Diretrizes:
 `;
 
 export async function generateAIResponse(prompt: string): Promise<string> {
-  // Verificação segura para evitar erro de 'process is not defined'
-  const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : (window as any).API_KEY;
+  // Use process.env.API_KEY directly as per guidelines
+  const apiKey = process.env.API_KEY;
   
   if (!apiKey) {
     console.error("API_KEY não encontrada nas variáveis de ambiente.");
     return "Erro: Chave de API não configurada.";
   }
 
+  // Initialize with named parameter
   const ai = new GoogleGenAI({ apiKey });
   
   try {
+    // Using gemini-3-flash-preview as per task type recommendations
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
@@ -33,6 +35,7 @@ export async function generateAIResponse(prompt: string): Promise<string> {
       },
     });
 
+    // Access .text property directly (not a method)
     return response.text || "Desculpe, não consegui gerar a resposta.";
   } catch (error) {
     console.error("Erro na IA:", error);
