@@ -1,26 +1,40 @@
 
 import React from 'react';
-import ReactDOM from 'react-dom/client';
+import { createRoot } from 'react-dom/client';
 import App from './App';
 
-console.log("Iniciando aplicação Hidro Clean...");
+const startApp = () => {
+  const rootElement = document.getElementById('root');
+  const errorDisplay = document.getElementById('error-display');
 
-const rootElement = document.getElementById('root');
-if (!rootElement) {
-  throw new Error("Could not find root element to mount to");
+  if (!rootElement) return;
+
+  try {
+    const root = createRoot(rootElement);
+    root.render(
+      <React.StrictMode>
+        <App />
+      </React.StrictMode>
+    );
+    console.log("Hidro Clean montado com sucesso.");
+  } catch (error) {
+    console.error("Falha ao renderizar App:", error);
+    if (rootElement) rootElement.style.display = 'none';
+    if (errorDisplay) errorDisplay.style.display = 'block';
+  }
+};
+
+// Garante que o DOM está pronto e lida com possíveis erros de importação
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', startApp);
+} else {
+  startApp();
 }
 
-try {
-  const root = ReactDOM.createRoot(rootElement);
-  root.render(
-    <React.StrictMode>
-      <App />
-    </React.StrictMode>
-  );
-} catch (error) {
-  console.error("Erro crítico na renderização do React:", error);
-  rootElement.innerHTML = `<div style="padding: 20px; color: red; font-family: sans-serif;">
-    <h2>Erro ao carregar aplicação</h2>
-    <p>Verifique o console do navegador para mais detalhes.</p>
-  </div>`;
-}
+// Global error handler para capturar falhas de rede/módulos
+window.addEventListener('error', (event) => {
+  if (event.message.includes('import') || event.message.includes('Script error')) {
+    const errorDisplay = document.getElementById('error-display');
+    if (errorDisplay) errorDisplay.style.display = 'block';
+  }
+});
