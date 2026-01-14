@@ -1,0 +1,8 @@
+
+-- COPIE E EXECUTE NO SQL EDITOR DO SUPABASE:
+
+-- 1. Adiciona campo para as notas da ficha técnica
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS notes TEXT;
+
+-- 2. Adiciona campo para os anexos (fotos e PDFs)
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS attachments JSONB DEFAULT '[]';
