@@ -328,9 +328,9 @@ const App: React.FC = () => {
     }, 1500);
   };
 
-  const ApptItem = ({ appt, showStage = false }: { appt: Appointment, showStage?: boolean }) => (
+  // Fixed ApptItem definition to properly handle 'key' when used in map
+  const ApptItem: React.FC<{ appt: Appointment, showStage?: boolean }> = ({ appt, showStage = false }) => (
     <div 
-      key={appt.id} 
       className={`rounded-xl p-5 shadow-sm border transition-all flex items-center group cursor-pointer gap-6 ${appt.tech_sent_at ? 'bg-emerald-50/50 border-emerald-200' : 'bg-white border-slate-200/60 hover:border-blue-400'}`} 
       onClick={() => setSelectedAppt(appt)}
     >
@@ -622,7 +622,7 @@ const App: React.FC = () => {
                  <button onClick={() => { setIsTechModalOpen(false); setActiveTechId(null); }} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"><X size={20}/></button>
               </div>
               <div className="p-6 flex-1"><label className="block text-[8px] font-black text-slate-400 uppercase mb-3">Mensagem para Copiar</label><textarea className="w-full h-80 bg-slate-50 border border-slate-200 rounded-2xl p-4 text-slate-700 font-mono text-xs leading-relaxed resize-none focus:ring-2 focus:ring-emerald-100 outline-none" value={techMessage} onChange={(e) => setTechMessage(e.target.value)} /></div>
-              <div className="p-6 bg-slate-50 border-t border-slate-100 flex items-center justify-center"><button onClick={copyToClipboard} className={`w-full py-4 rounded-xl font-black text-xs shadow-xl flex items-center justify-center space-x-2 transition-all active:scale-95 ${copiedTech ? 'bg-emerald-700' : 'bg-emerald-600 hover:bg-emerald-700'} text-white`}>{copiedTech ? <Check size={18} /> : <Copy size={18} />}<span>{copiedTech ? 'Enviado! (Copiado)' : 'Copiar e Marcar como Enviado'}</span></button></div>
+              <div className="p-6 bg-slate-50 border-t border-slate-100 flex items-center justify-center"><button onClick={copyToClipboard} className={`w-full py-4 rounded-xl font-black text-xs shadow-xl flex items-center justify-center space-x-2 transition-all active:scale-95 ${copiedTech ? 'bg-emerald-700' : 'bg-emerald-600 hover:bg-emerald-700'} text-white`}>{copiedTech ? <Check size={18} /> : <Copy size={18} />}<span>{copiedTech ? 'Enviado! (Copiado)' : 'Copiar e Markar como Enviado'}</span></button></div>
            </div>
         </div>
       )}

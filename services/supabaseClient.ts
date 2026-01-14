@@ -1,11 +1,12 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// URL confirmada pelo seu print
 const supabaseUrl = 'https://modethgcutvgygpeepon.supabase.co';
+// Usando a chave fornecida ou fallback seguro
+const supabaseAnonKey = (typeof process !== 'undefined' ? process.env.SUPABASE_ANON_KEY : '') || 'sb_publishable_fu4uN7qoTdftA2LT6QD5QQ_4MHWJtiR'; 
 
-// NOTA: Certifique-se de usar a 'anon key' do seu painel Supabase (Project Settings -> API)
-// A chave abaixo é um placeholder, você deve substituir pela sua se esta não funcionar.
-const supabaseAnonKey = 'sb_publishable_fu4uN7qoTdftA2LT6QD5QQ_4MHWJtiR'; 
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn("Supabase credentials missing. Check your environment variables.");
+}
 
 export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey);
