@@ -517,7 +517,7 @@ const App: React.FC = () => {
                        {syncSuccess && <div className="flex items-center gap-2 text-[9px] font-black text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full"><Check size={12}/> Sincronizado</div>}
                     </div>
                     
-                    {/* BOTÕES DE AÇÃO RÁPIDA DE STATUS - MOVIDOS PARA CÁ */}
+                    {/* BOTÕES DE AÇÃO RÁPIDA DE STATUS - CONFORME PRINT ANTERIOR */}
                     <div className="flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200 gap-1.5 ml-auto mr-4">
                         <button 
                           onClick={() => { handleMoveApptStage(selectedAppt.id, 'Concluído'); setSelectedAppt(null); }}
