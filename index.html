@@ -14,6 +14,17 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         #root { min-height: 100vh; }
+        
+        /* Ocultar ícones nativos de relógio nos inputs de hora */
+        input[type="time"]::-webkit-calendar-picker-indicator {
+            display: none !important;
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="time"] {
+            -webkit-appearance: none;
+            -moz-appearance: textfield;
+        }
     </style>
     <script type="importmap">
 {

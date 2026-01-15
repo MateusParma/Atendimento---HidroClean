@@ -50,5 +50,8 @@ export interface Appointment {
   phone?: string;
   email?: string;
   nif?: string;
-  tech_sent_at?: string; // Novo campo para rastreio
+  tech_sent_at?: string; 
+  reminder_enabled?: boolean;
+  reminder_email?: string;
+  reminder_sent?: boolean;
 }
