@@ -9,7 +9,8 @@ import {
   Trash2, Send, Copy, Check, CheckCircle2, MessageCircle,
   Calendar as CalendarIcon, ShieldCheck, DollarSign, Filter,
   ChevronDown, ArrowUpAZ, ArrowDownAZ, Columns, Bell, BellRing,
-  Loader2, ClipboardList, File, Image as ImageIcon
+  Loader2, ClipboardList, File, Image as ImageIcon,
+  CheckCircle, XCircle, Info
 } from 'lucide-react';
 import { Category, SavedResponse, Appointment, ApptStage, Attachment } from './types';
 import { supabase } from './services/supabaseClient';
@@ -26,6 +27,20 @@ const STAGES: ApptStage[] = [
   'Aguardando Resposta', 'Serviços a Fazer', 'Em Execução', 'Retrabalho',
   'A Receber', 'Concluído', 'Recusados'
 ];
+
+export const STAGE_COLORS: Record<ApptStage, { bg: string, text: string, border: string, dot: string }> = {
+  'Leads': { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', dot: 'bg-blue-500' },
+  'Visita Técnica': { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', dot: 'bg-purple-500' },
+  'Orçamentos a Fazer': { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', dot: 'bg-amber-500' },
+  'Relatórios a Fazer': { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200', dot: 'bg-indigo-500' },
+  'Aguardando Resposta': { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', dot: 'bg-slate-500' },
+  'Serviços a Fazer': { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200', dot: 'bg-cyan-500' },
+  'Em Execução': { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200', dot: 'bg-orange-500' },
+  'Retrabalho': { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200', dot: 'bg-rose-500' },
+  'A Receber': { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200', dot: 'bg-yellow-500' },
+  'Concluído': { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', dot: 'bg-emerald-500' },
+  'Recusados': { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', dot: 'bg-red-500' }
+};
 
 const MONTHS = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -155,23 +170,36 @@ const App: React.FC = () => {
     window.open(`https://wa.me/${final}`, '_blank');
   };
 
+  const handleMoveApptStage = async (apptId: string, newStage: ApptStage) => {
+    setAppointments(prev => prev.map(a => a.id === apptId ? { ...a, stage: newStage } : a));
+    const { error } = await supabase
+      .from('appointments')
+      .update({ stage: newStage })
+      .eq('id', apptId);
+      
+    if (error) {
+      console.error("Erro ao mover lead:", error);
+      loadCRM();
+    } else {
+      const id = Math.random().toString();
+      setNotifications(prev => [...prev, { id, msg: `Lead movido para ${newStage}!` }]);
+      setTimeout(() => setNotifications(prev => prev.filter(n => n.id !== id)), 3000);
+    }
+  };
+
   const handleSendConfirmationEmail = async (appt: Appointment) => {
     if (!appt.email) {
       alert("Erro: O cliente não possui um endereço de e-mail registado.");
       return;
     }
-
     setIsGeneratingEmail(true);
     const id = Math.random().toString();
     setNotifications(prev => [...prev, { id, msg: `A gerar confirmação via IA...` }]);
-    
     try {
       const bodyText = await generateClientConfirmationEmail(appt);
       const subject = `Confirmação de Agendamento - Hidro Clean (${appt.service_type})`;
       const mailtoUrl = `mailto:${appt.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyText)}`;
-      
       window.location.href = mailtoUrl;
-
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, msg: `E-mail preparado com sucesso!` } : n));
       setTimeout(() => setNotifications(prev => prev.filter(n => n.id !== id)), 5000);
     } catch (error) {
@@ -184,7 +212,6 @@ const App: React.FC = () => {
 
   const handleGenerateOS = async (appt: Appointment) => {
     const dataFormatada = new Date(appt.scheduled_at + 'T00:00:00').toLocaleDateString('pt-PT');
-    
     const message = `🛠️ *ORDEM DE SERVIÇO - HIDRO CLEAN*\n` +
       `----------------------------------------\n` +
       `👤 *CLIENTE:* ${appt.customer_name || 'N/A'}\n` +
@@ -199,10 +226,8 @@ const App: React.FC = () => {
       `📝 *NOTAS TÉCNICAS:*\n${appt.notes || 'Sem observações adicionais.'}\n` +
       `----------------------------------------\n` +
       `✅ *Por favor, confirme a receção desta OS.*`;
-    
     setTechMessage(message);
     setIsTechModalOpen(true);
-
     const now = new Date().toISOString();
     try {
       await supabase.from('appointments').update({ tech_sent_at: now }).eq('id', appt.id);
@@ -230,53 +255,30 @@ const App: React.FC = () => {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0 || !selectedAppt) return;
-
     setIsUploading(true);
     const newAttachments = [...(selectedAppt.attachments || [])];
-
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const fileName = `${Date.now()}-${file.name.replace(/\s/g, '_')}`;
       const filePath = `appointments/${selectedAppt.id}/${fileName}`;
-
       try {
-        const { data, error } = await supabase.storage
-          .from('attachments')
-          .upload(filePath, file);
-
+        const { error } = await supabase.storage.from('attachments').upload(filePath, file);
         if (error) {
           const reader = new FileReader();
           reader.onloadend = () => {
             const base64data = reader.result as string;
-            const fallbackAttachment: Attachment = {
-              name: file.name,
-              type: file.type,
-              size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
-              date: new Date().toISOString(),
-              url: base64data
-            };
+            const fallbackAttachment: Attachment = { name: file.name, type: file.type, size: `${(file.size / 1024 / 1024).toFixed(2)} MB`, date: new Date().toISOString(), url: base64data };
             setSelectedAppt(prev => prev ? { ...prev, attachments: [...(prev.attachments || []), fallbackAttachment] } : null);
           };
           reader.readAsDataURL(file);
         } else {
           const { data: { publicUrl } } = supabase.storage.from('attachments').getPublicUrl(filePath);
-          const attachment: Attachment = {
-            name: file.name,
-            type: file.type,
-            size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
-            date: new Date().toISOString(),
-            url: publicUrl
-          };
+          const attachment: Attachment = { name: file.name, type: file.type, size: `${(file.size / 1024 / 1024).toFixed(2)} MB`, date: new Date().toISOString(), url: publicUrl };
           newAttachments.push(attachment);
         }
-      } catch (err) {
-        console.error("Erro no upload:", err);
-      }
+      } catch (err) { console.error("Erro no upload:", err); }
     }
-
-    if (newAttachments.length > (selectedAppt.attachments?.length || 0)) {
-       setSelectedAppt({ ...selectedAppt, attachments: newAttachments });
-    }
+    if (newAttachments.length > (selectedAppt.attachments?.length || 0)) setSelectedAppt({ ...selectedAppt, attachments: newAttachments });
     setIsUploading(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -329,26 +331,27 @@ const App: React.FC = () => {
     const todayStr = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
     const isToday = appt.scheduled_at === todayStr;
     const isConfirming = confirmDeleteId === appt.id;
+    const stageColor = STAGE_COLORS[appt.stage];
 
     return (
       <div 
-        onClick={() => setSelectedAppt(appt)}
-        className="bg-white border border-slate-200 rounded-2xl p-5 flex items-center gap-6 shadow-sm hover:border-blue-400 transition-all cursor-pointer group"
+        onClick={() => setSelectedAppt(appt)} 
+        className={`bg-white border-y border-r border-slate-200 rounded-2xl p-5 flex items-center gap-6 shadow-sm hover:border-blue-400 transition-all cursor-pointer group relative overflow-hidden`}
       >
+        <div className={`absolute left-0 top-0 bottom-0 w-2 ${stageColor.dot}`}></div>
         <div className="w-20 shrink-0 text-center flex flex-col items-center">
           <div className="bg-blue-600 text-white w-full py-2 rounded-xl border-2 border-blue-600 flex flex-col items-center shadow-lg shadow-blue-100">
             <span className="text-2xl font-black">{new Date(appt.scheduled_at + 'T00:00:00').getDate()}</span>
-            <span className="text-[10px] font-black uppercase">
-              {isToday ? 'HOJE' : new Date(appt.scheduled_at + 'T00:00:00').toLocaleDateString('pt-PT', { weekday: 'short' }).toUpperCase()}
-            </span>
+            <span className="text-[10px] font-black uppercase">{isToday ? 'HOJE' : new Date(appt.scheduled_at + 'T00:00:00').toLocaleDateString('pt-PT', { weekday: 'short' }).toUpperCase()}</span>
           </div>
-          <div className="mt-2 text-[10px] font-black text-blue-700 bg-blue-50 px-2 py-1 rounded-lg border border-blue-200 flex items-center justify-center gap-1">
-            <Clock size={12}/>{appt.start_time}
-          </div>
+          <div className="mt-2 text-[10px] font-black text-blue-700 bg-blue-50 px-2 py-1 rounded-lg border border-blue-200 flex items-center justify-center gap-1"><Clock size={12}/>{appt.start_time}</div>
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-blue-600 text-[9px] font-black uppercase tracking-widest">{appt.service_type}</span>
+            <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border ${stageColor.bg} ${stageColor.text} ${stageColor.border}`}>
+              {appt.stage}
+            </span>
+            <span className="text-blue-600 text-[9px] font-black uppercase tracking-widest">• {appt.service_type}</span>
             {appt.reminder_enabled && <Bell size={10} className={`${appt.reminder_sent ? 'text-emerald-500' : 'text-blue-400 animate-pulse'}`} />}
           </div>
           <h4 className="text-xl font-black text-slate-900 leading-tight mb-1">{appt.customer_name}</h4>
@@ -356,23 +359,8 @@ const App: React.FC = () => {
         </div>
         <div className="flex items-center gap-3">
            <button onClick={(e) => { e.stopPropagation(); handleWhatsApp(appt.phone); }} className="p-3 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm" title="WhatsApp"><MessageCircle size={20}/></button>
-           
-           <button 
-             onClick={(e) => { e.stopPropagation(); handleGenerateOS(appt); }} 
-             className={`p-3 rounded-xl transition-all shadow-sm flex items-center justify-center ${appt.tech_sent_at ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : 'bg-white border border-slate-200 text-slate-400 hover:bg-indigo-600 hover:text-white'}`}
-             title="Enviar Ordem de Serviço (OS)"
-           >
-             <ClipboardList size={20}/>
-           </button>
-
-           <button 
-             onClick={(e) => { e.stopPropagation(); handleDeleteAppt(appt.id); }} 
-             className={`p-3 rounded-xl transition-all flex items-center gap-2 shadow-sm ${isConfirming ? 'bg-red-600 text-white animate-pulse px-4' : 'bg-slate-50 text-slate-400 hover:bg-red-500 hover:text-white'}`}
-             title={isConfirming ? "Confirmar?" : "Eliminar"}
-           >
-              <Trash2 size={20}/>
-              {isConfirming && <span className="text-[10px] font-black uppercase tracking-tighter">Confirmar?</span>}
-           </button>
+           <button onClick={(e) => { e.stopPropagation(); handleGenerateOS(appt); }} className={`p-3 rounded-xl transition-all shadow-sm flex items-center justify-center ${appt.tech_sent_at ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : 'bg-white border border-slate-200 text-slate-400 hover:bg-indigo-600 hover:text-white'}`} title="Enviar Ordem de Serviço (OS)"><ClipboardList size={20}/></button>
+           <button onClick={(e) => { e.stopPropagation(); handleDeleteAppt(appt.id); }} className={`p-3 rounded-xl transition-all flex items-center gap-2 shadow-sm ${isConfirming ? 'bg-red-600 text-white animate-pulse px-4' : 'bg-slate-50 text-slate-400 hover:bg-red-500 hover:text-white'}`} title={isConfirming ? "Confirmar?" : "Eliminar"}><Trash2 size={20}/>{isConfirming && <span className="text-[10px] font-black uppercase tracking-tighter">Confirmar?</span>}</button>
         </div>
         <div className="text-right min-w-[100px] border-l pl-6 border-slate-100">
            <div className="text-2xl font-black text-slate-900 leading-none">{appt.expected_revenue}€</div>
@@ -460,14 +448,25 @@ const App: React.FC = () => {
                 </div>
               </div>
 
+              {/* ÍNDICE DE CORES BONITO */}
+              <div className="bg-white/60 border border-slate-200 rounded-3xl p-4 mb-8 flex flex-wrap items-center justify-center gap-4 shadow-sm animate-in fade-in duration-700">
+                <div className="flex items-center gap-1.5 mr-2 text-[9px] font-black text-slate-400 uppercase tracking-widest"><Info size={14}/> Legenda:</div>
+                {STAGES.map(stage => (
+                  <div key={stage} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-slate-100 shadow-sm">
+                    <div className={`w-2 h-2 rounded-full ${STAGE_COLORS[stage].dot}`}></div>
+                    <span className="text-[9px] font-black text-slate-600 uppercase tracking-tighter">{stage}</span>
+                  </div>
+                ))}
+              </div>
+
               <div className="space-y-12 pb-10">
                 {sortMode === 'kanban' ? (
-                  <KanbanView stages={STAGES} appointments={filteredAppointments} onEditAppt={setSelectedAppt} onWhatsApp={handleWhatsApp} />
+                  <KanbanView stages={STAGES} appointments={filteredAppointments} onEditAppt={setSelectedAppt} onWhatsApp={handleWhatsApp} onMoveAppt={handleMoveApptStage} />
                 ) : sortMode === 'stage' ? (
                   STAGES.map(stage => groupedByStage[stage] && (
                     <div key={stage} className="animate-in fade-in slide-in-from-left-4 duration-500">
                       <h3 className="text-sm font-black text-slate-800 uppercase mb-6 flex items-center gap-3">
-                        <div className="w-1.5 h-6 bg-blue-600 rounded-full shadow-sm shadow-blue-200"></div>
+                        <div className={`w-1.5 h-6 rounded-full shadow-sm ${STAGE_COLORS[stage].dot}`}></div>
                         {stage} <span className="px-2 py-0.5 bg-slate-200 text-slate-600 rounded text-[10px] font-black">{groupedByStage[stage].length}</span>
                       </h3>
                       <div className="space-y-4">
@@ -494,7 +493,7 @@ const App: React.FC = () => {
               </div>
             </>
           )}
-          {view === 'calendar' && <FullCalendarView appointments={appointments} onEditAppt={setSelectedAppt} onNewAppt={() => setIsApptModalOpen(true)} onSendTech={handleGenerateOS} />}
+          {view === 'calendar' && <FullCalendarView appointments={filteredAppointments} onEditAppt={setSelectedAppt} onNewAppt={() => setIsApptModalOpen(true)} onSendTech={handleGenerateOS} />}
           {view === 'library' && (
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {responses.map(res => <ResponseCard key={res.id} response={res} onEdit={r => { setEditingResponse(r); setIsFormModalOpen(true); }} onDelete={loadLibrary} onDragStart={()=>{}} onDragOver={()=>{}} onDragEnd={()=>{}} />)}
@@ -509,13 +508,29 @@ const App: React.FC = () => {
           <div className="bg-white rounded-[3rem] w-full max-w-6xl h-[95vh] flex flex-col shadow-2xl border border-white overflow-hidden">
             <header className="px-10 py-6 border-b flex items-center justify-between bg-slate-50/30">
               <div className="flex items-center space-x-6 flex-1">
-                <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-blue-100"><User size={32}/></div>
+                <div className={`w-16 h-16 ${STAGE_COLORS[selectedAppt.stage].dot} rounded-2xl flex items-center justify-center text-white shadow-xl shadow-blue-100`}><User size={32}/></div>
                 <div className="flex-1">
                   <div className="flex items-center gap-4">
                     <input className="text-3xl font-black text-slate-900 bg-transparent outline-none w-full border-b border-transparent focus:border-blue-100" value={selectedAppt.customer_name} onChange={e => setSelectedAppt({...selectedAppt, customer_name: e.target.value})} />
                     <div className="flex items-center gap-2">
                        {isSyncing && <div className="flex items-center gap-2 text-[9px] font-black text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full animate-pulse"><RefreshCw size={12} className="animate-spin"/> Guardando...</div>}
                        {syncSuccess && <div className="flex items-center gap-2 text-[9px] font-black text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full"><Check size={12}/> Sincronizado</div>}
+                    </div>
+                    
+                    {/* BOTÕES DE AÇÃO RÁPIDA DE STATUS - MOVIDOS PARA CÁ */}
+                    <div className="flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200 gap-1.5 ml-auto mr-4">
+                        <button 
+                          onClick={() => { handleMoveApptStage(selectedAppt.id, 'Concluído'); setSelectedAppt(null); }}
+                          className="px-3 py-2 bg-white text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-xl font-black text-[9px] uppercase transition-all shadow-sm flex items-center gap-1.5"
+                        >
+                          <CheckCircle size={14}/> Concluir
+                        </button>
+                        <button 
+                          onClick={() => { handleMoveApptStage(selectedAppt.id, 'Recusados'); setSelectedAppt(null); }}
+                          className="px-3 py-2 bg-white text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl font-black text-[9px] uppercase transition-all shadow-sm flex items-center gap-1.5"
+                        >
+                          <XCircle size={14}/> Recusar
+                        </button>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 mt-3">
@@ -533,22 +548,7 @@ const App: React.FC = () => {
               </div>
               <div className="flex items-center gap-4">
                  <button onClick={() => handleWhatsApp(selectedAppt.phone)} className="px-8 py-4 bg-[#00A884] text-white rounded-2xl font-black text-xs uppercase shadow-xl shadow-emerald-50 flex items-center gap-3 hover:scale-105 transition-all"><MessageCircle size={18}/> WhatsApp</button>
-                 
-                 <button 
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
-                    if (confirmDeleteId === selectedAppt.id) {
-                      handleDeleteAppt(selectedAppt.id);
-                    } else {
-                      setConfirmDeleteId(selectedAppt.id);
-                      setTimeout(() => setConfirmDeleteId(null), 3000);
-                    }
-                  }} 
-                  className={`px-8 py-4 rounded-2xl font-black text-xs uppercase flex items-center gap-3 transition-all ${confirmDeleteId === selectedAppt.id ? 'bg-red-600 text-white animate-pulse shadow-red-100' : 'bg-white border border-slate-200 text-slate-400 hover:bg-red-500 hover:text-white shadow-sm'}`}
-                >
-                   <Trash2 size={18}/> {confirmDeleteId === selectedAppt.id ? 'Confirmar?' : 'Eliminar'}
-                 </button>
-
+                 <button onClick={(e) => { e.stopPropagation(); if (confirmDeleteId === selectedAppt.id) handleDeleteAppt(selectedAppt.id); else { setConfirmDeleteId(selectedAppt.id); setTimeout(() => setConfirmDeleteId(null), 3000); } }} className={`px-8 py-4 rounded-2xl font-black text-xs uppercase flex items-center gap-3 transition-all ${confirmDeleteId === selectedAppt.id ? 'bg-red-600 text-white animate-pulse shadow-red-100' : 'bg-white border border-slate-200 text-slate-400 hover:bg-red-500 hover:text-white shadow-sm'}`}><Trash2 size={18}/> {confirmDeleteId === selectedAppt.id ? 'Confirmar?' : 'Eliminar'}</button>
                  <button onClick={() => setSelectedAppt(null)} className="w-12 h-12 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-50 transition-all"><X size={24}/></button>
               </div>
             </header>
@@ -573,7 +573,7 @@ const App: React.FC = () => {
                  </div>
 
                  <section className="bg-slate-900 rounded-[3rem] p-10 text-white shadow-2xl relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/10 blur-[60px] transition-all"></div>
+                    <div className={`absolute top-0 right-0 w-32 h-32 ${STAGE_COLORS[selectedAppt.stage].dot} opacity-20 blur-[60px] transition-all`}></div>
                     <h3 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em] mb-8">Comercial</h3>
                     <div className="flex items-baseline gap-2 mb-10">
                        <input type="number" className="text-6xl font-black bg-transparent outline-none w-40 [appearance:textfield] focus:text-blue-400 transition-colors" value={selectedAppt.expected_revenue} onChange={e => setSelectedAppt({...selectedAppt, expected_revenue: Number(e.target.value)})} />
@@ -581,8 +581,12 @@ const App: React.FC = () => {
                     </div>
                     <div className="space-y-8">
                        <div>
-                          <label className="text-[10px] font-black text-slate-500 uppercase block mb-4 tracking-widest">Etapa</label>
-                          <select className="w-full bg-slate-800 text-white rounded-2xl px-5 py-4.5 text-xs font-black uppercase border border-slate-700 outline-none appearance-none cursor-pointer hover:bg-slate-700 transition-all" value={selectedAppt.stage} onChange={e => setSelectedAppt({...selectedAppt, stage: e.target.value as ApptStage})}>
+                          <label className="text-[10px] font-black text-slate-500 uppercase block mb-4 tracking-widest">Etapa do Funil</label>
+                          <select 
+                            className={`w-full bg-slate-800 text-white rounded-2xl px-5 py-4.5 text-xs font-black uppercase border border-slate-700 outline-none appearance-none cursor-pointer hover:bg-slate-700 transition-all`} 
+                            value={selectedAppt.stage} 
+                            onChange={e => setSelectedAppt({...selectedAppt, stage: e.target.value as ApptStage})}
+                          >
                              {STAGES.map(s => <option key={s} value={s}>{s}</option>)}
                           </select>
                        </div>
@@ -599,30 +603,16 @@ const App: React.FC = () => {
                  <div className="p-8 bg-blue-50/50 rounded-[3rem] border border-blue-100 space-y-6">
                     <div className="flex items-center justify-between">
                        <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-widest flex items-center"><BellRing size={16} className="mr-2" /> Lembrete 1h Antes</h3>
-                       <button 
-                         onClick={() => setSelectedAppt({...selectedAppt, reminder_enabled: !selectedAppt.reminder_enabled})}
-                         className={`w-12 h-6 rounded-full transition-all relative ${selectedAppt.reminder_enabled ? 'bg-blue-600' : 'bg-slate-300'}`}
-                       >
-                         <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${selectedAppt.reminder_enabled ? 'left-7' : 'left-1'}`}></div>
-                       </button>
+                       <button onClick={() => setSelectedAppt({...selectedAppt, reminder_enabled: !selectedAppt.reminder_enabled})} className={`w-12 h-6 rounded-full transition-all relative ${selectedAppt.reminder_enabled ? 'bg-blue-600' : 'bg-slate-300'}`}><div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${selectedAppt.reminder_enabled ? 'left-7' : 'left-1'}`}></div></button>
                     </div>
                     {selectedAppt.reminder_enabled && (
                        <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
                           <p className="text-[9px] font-bold text-blue-400 leading-tight">Avisaremos automaticamente via e-mail antes do serviço.</p>
                           <div className="bg-white p-3 rounded-xl border border-blue-100 flex items-center shadow-sm">
                              <Mail size={14} className="text-blue-300 mr-2" />
-                             <input 
-                               className="w-full bg-transparent text-[11px] font-black outline-none text-slate-700" 
-                               placeholder="Email para destino" 
-                               value={selectedAppt.reminder_email || ''} 
-                               onChange={e => setSelectedAppt({...selectedAppt, reminder_email: e.target.value})}
-                             />
+                             <input className="w-full bg-transparent text-[11px] font-black outline-none text-slate-700" placeholder="Email para destino" value={selectedAppt.reminder_email || ''} onChange={e => setSelectedAppt({...selectedAppt, reminder_email: e.target.value})} />
                           </div>
-                          {selectedAppt.reminder_sent && (
-                            <div className="flex items-center gap-2 text-[8px] font-black text-emerald-600 uppercase">
-                              <CheckCircle2 size={12} /> Lembrete enviado com sucesso
-                            </div>
-                          )}
+                          {selectedAppt.reminder_sent && ( <div className="flex items-center gap-2 text-[8px] font-black text-emerald-600 uppercase"> <CheckCircle2 size={12} /> Lembrete enviado com sucesso </div> )}
                        </div>
                     )}
                  </div>
@@ -647,28 +637,14 @@ const App: React.FC = () => {
                             <input type="date" className="bg-transparent outline-none w-full cursor-pointer font-black" value={selectedAppt.scheduled_at} onChange={e => setSelectedAppt({...selectedAppt, scheduled_at: e.target.value})} />
                           </div>
                           <div className="flex items-center justify-between border-t border-slate-100 pt-4 gap-2">
-                             {/* Início editável - Pill Style corrigido */}
                              <div className="flex-1 bg-blue-50 border border-blue-100 rounded-full py-2 px-3 flex items-center justify-center gap-2 group hover:bg-blue-100 transition-all">
                                 <Clock size={16} className="text-blue-600 shrink-0 cursor-pointer" onClick={() => startTimeRef.current?.showPicker()} />
-                                <input 
-                                  ref={startTimeRef}
-                                  type="time" 
-                                  className="bg-transparent text-blue-900 font-black text-base outline-none w-full text-center cursor-text" 
-                                  value={selectedAppt.start_time || ''} 
-                                  onChange={e => setSelectedAppt({...selectedAppt, start_time: e.target.value})} 
-                                />
+                                <input ref={startTimeRef} type="time" className="bg-transparent text-blue-900 font-black text-base outline-none w-full text-center cursor-text" value={selectedAppt.start_time || ''} onChange={e => setSelectedAppt({...selectedAppt, start_time: e.target.value})} />
                              </div>
                              <span className="text-[8px] font-black text-slate-300 uppercase shrink-0">Até</span>
-                             {/* Fim editável - Pill Style corrigido */}
                              <div className="flex-1 bg-slate-50 border border-slate-200 rounded-full py-2 px-3 flex items-center justify-center gap-2 group hover:bg-slate-100 transition-all">
                                 <Clock size={16} className="text-slate-500 shrink-0 cursor-pointer" onClick={() => endTimeRef.current?.showPicker()} />
-                                <input 
-                                  ref={endTimeRef}
-                                  type="time" 
-                                  className="bg-transparent text-slate-800 font-black text-base outline-none w-full text-center cursor-text" 
-                                  value={selectedAppt.end_time || ''} 
-                                  onChange={e => setSelectedAppt({...selectedAppt, end_time: e.target.value})} 
-                                />
+                                <input ref={endTimeRef} type="time" className="bg-transparent text-slate-800 font-black text-base outline-none w-full text-center cursor-text" value={selectedAppt.end_time || ''} onChange={e => setSelectedAppt({...selectedAppt, end_time: e.target.value})} />
                              </div>
                           </div>
                        </div>
@@ -678,40 +654,19 @@ const App: React.FC = () => {
                     <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center px-4"><StickyNote className="mr-3 text-blue-600" size={18} /> Notas Técnicas</h3>
                     <textarea className="w-full h-48 bg-slate-50/50 border border-slate-100 rounded-[2.5rem] p-8 text-slate-700 font-bold text-sm leading-relaxed outline-none focus:ring-4 focus:ring-blue-50/50 focus:border-blue-200 transition-all placeholder:text-slate-300 shadow-inner" placeholder="Detalhes técnicos aqui..." value={selectedAppt.notes} onChange={e => setSelectedAppt({...selectedAppt, notes: e.target.value})} />
                  </div>
-                 
                  <div className="bg-slate-50/50 p-8 rounded-[3rem] border border-slate-100">
                     <div className="flex items-center justify-between mb-8 px-4">
                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center"><Upload className="mr-3 text-blue-600" size={18}/> Anexos (Imagens/PDF)</h3>
-                       <button 
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={isUploading}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 transition-all shadow-lg shadow-blue-100 disabled:opacity-50"
-                       >
-                         {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16}/>}
-                         Adicionar Ficheiros
-                       </button>
-                       <input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        className="hidden" 
-                        multiple 
-                        accept="image/*,application/pdf" 
-                        onChange={handleFileUpload}
-                       />
+                       <button onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 transition-all shadow-lg shadow-blue-100 disabled:opacity-50">{isUploading ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16}/>} Adicionar Ficheiros</button>
+                       <input type="file" ref={fileInputRef} className="hidden" multiple accept="image/*,application/pdf" onChange={handleFileUpload} />
                     </div>
-                    
                     {selectedAppt.attachments && selectedAppt.attachments.length > 0 ? (
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                         {selectedAppt.attachments.map((file, idx) => (
                           <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm group relative hover:border-blue-400 transition-all">
                             <div className="flex items-center gap-3">
-                              <div className={`p-2 rounded-xl shrink-0 ${file.type.includes('pdf') ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'}`}>
-                                {file.type.includes('pdf') ? <File size={18} /> : <ImageIcon size={18} />}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-[10px] font-black text-slate-800 truncate mb-0.5">{file.name}</p>
-                                <p className="text-[8px] font-bold text-slate-400 uppercase">{file.size}</p>
-                              </div>
+                              <div className={`p-2 rounded-xl shrink-0 ${file.type.includes('pdf') ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'}`}>{file.type.includes('pdf') ? <File size={18} /> : <ImageIcon size={18} />}</div>
+                              <div className="flex-1 min-w-0"><p className="text-[10px] font-black text-slate-800 truncate mb-0.5">{file.name}</p><p className="text-[8px] font-bold text-slate-400 uppercase">{file.size}</p></div>
                             </div>
                             <div className="mt-3 flex items-center gap-2">
                               <a href={file.url} target="_blank" rel="noreferrer" className="flex-1 text-center py-1.5 bg-slate-50 text-slate-600 text-[8px] font-black uppercase rounded-lg hover:bg-blue-600 hover:text-white transition-all">Abrir</a>
@@ -721,32 +676,17 @@ const App: React.FC = () => {
                         ))}
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-slate-200 rounded-[2.5rem] bg-white/50 shadow-inner">
-                        <div className="bg-slate-100 p-4 rounded-full mb-3 text-slate-300"><FileText size={24}/></div>
-                        <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Sem ficheiros carregados</p>
-                      </div>
+                      <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-slate-200 rounded-[2.5rem] bg-white/50 shadow-inner"><div className="bg-slate-100 p-4 rounded-full mb-3 text-slate-300"><FileText size={24}/></div><p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Sem ficheiros carregados</p></div>
                     )}
                  </div>
               </div>
             </div>
 
             <footer className="px-10 py-6 border-t bg-slate-50/30 flex items-center justify-between">
-              <div className="flex items-center space-x-3 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]"><ShieldCheck size={18} className="text-emerald-500" /> Smart CRM v5.1 Platinum + IA</div>
+              <div className="flex items-center space-x-3 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]"><ShieldCheck size={18} className="text-emerald-500" /> Smart CRM v5.2 Platinum + IA</div>
               <div className="flex items-center space-x-4">
-                 <button 
-                   onClick={() => handleSendConfirmationEmail(selectedAppt)}
-                   disabled={isGeneratingEmail}
-                   className="px-8 py-5 bg-white border border-slate-200 text-slate-700 rounded-[1.5rem] font-black text-xs uppercase shadow-sm flex items-center gap-3 hover:bg-blue-50 hover:border-blue-300 transition-all active:scale-95 disabled:opacity-50"
-                 >
-                   {isGeneratingEmail ? <Loader2 className="animate-spin text-blue-600" size={18} /> : <Mail size={18} className="text-blue-600" />}
-                   {isGeneratingEmail ? 'A preparar...' : 'Confirmar Cliente'}
-                 </button>
-                 <button 
-                   onClick={(e) => { e.stopPropagation(); handleGenerateOS(selectedAppt); }} 
-                   className="px-10 py-5 bg-blue-600 hover:bg-blue-700 text-white rounded-[1.5rem] font-black text-xs shadow-xl shadow-blue-50/50 flex items-center gap-4 transition-all active:scale-95"
-                 >
-                   <ClipboardList size={20}/> Gerar OS p/ Técnico
-                 </button>
+                 <button onClick={() => handleSendConfirmationEmail(selectedAppt)} disabled={isGeneratingEmail} className="px-8 py-5 bg-white border border-slate-200 text-slate-700 rounded-[1.5rem] font-black text-xs uppercase shadow-sm flex items-center gap-3 hover:bg-blue-50 hover:border-blue-300 transition-all active:scale-95 disabled:opacity-50">{isGeneratingEmail ? <Loader2 className="animate-spin text-blue-600" size={18} /> : <Mail size={18} className="text-blue-600" />}{isGeneratingEmail ? 'A preparar...' : 'Confirmar Cliente'}</button>
+                 <button onClick={(e) => { e.stopPropagation(); handleGenerateOS(selectedAppt); }} className="px-10 py-5 bg-blue-600 hover:bg-blue-700 text-white rounded-[1.5rem] font-black text-xs shadow-xl shadow-blue-50/50 flex items-center gap-4 transition-all active:scale-95"><ClipboardList size={20}/> Gerar OS p/ Técnico</button>
                  <button onClick={() => setSelectedAppt(null)} className="px-12 py-5 bg-slate-900 hover:bg-black text-white rounded-[1.5rem] font-black text-xs shadow-xl transition-all active:scale-95">Guardar e Sair</button>
               </div>
             </footer>
@@ -754,40 +694,17 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* OS MODAL (WhatsApp Copy) */}
       {isTechModalOpen && (
         <div className="fixed inset-0 z-[300] bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden border border-white">
-            <div className="p-8 bg-blue-50 border-b border-blue-100 flex items-center justify-between">
-              <h3 className="text-xl font-black text-blue-800 tracking-tight">Ordem de Serviço Pronta</h3>
-              <button onClick={() => setIsTechModalOpen(false)} className="text-blue-400 hover:text-blue-600 transition-colors"><X size={24}/></button>
-            </div>
-            <div className="p-8 space-y-6">
-              <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 font-mono text-xs whitespace-pre-wrap text-slate-700 leading-relaxed max-h-96 overflow-y-auto shadow-inner">
-                {techMessage}
-              </div>
-              <button 
-                onClick={() => { 
-                  navigator.clipboard.writeText(techMessage); 
-                  setCopiedTech(true); 
-                  setTimeout(() => setCopiedTech(false), 2000); 
-                }} 
-                className={`w-full py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all shadow-lg active:scale-95 ${copiedTech ? 'bg-emerald-600 text-white shadow-emerald-100' : 'bg-slate-900 text-white hover:bg-black shadow-slate-100'}`}
-              >
-                {copiedTech ? <Check size={20}/> : <Copy size={20}/>}
-                <span>{copiedTech ? 'Copiado com Sucesso!' : 'Copiar para WhatsApp'}</span>
-              </button>
-            </div>
+            <div className="p-8 bg-blue-50 border-b border-blue-100 flex items-center justify-between"><h3 className="text-xl font-black text-blue-800 tracking-tight">Ordem de Serviço Pronta</h3><button onClick={() => setIsTechModalOpen(false)} className="text-blue-400 hover:text-blue-600 transition-colors"><X size={24}/></button></div>
+            <div className="p-8 space-y-6"><div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 font-mono text-xs whitespace-pre-wrap text-slate-700 leading-relaxed max-h-96 overflow-y-auto shadow-inner">{techMessage}</div><button onClick={() => { navigator.clipboard.writeText(techMessage); setCopiedTech(true); setTimeout(() => setCopiedTech(false), 2000); }} className={`w-full py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all shadow-lg active:scale-95 ${copiedTech ? 'bg-emerald-600 text-white shadow-emerald-100' : 'bg-slate-900 text-white hover:bg-black shadow-slate-100'}`}>{copiedTech ? <Check size={20}/> : <Copy size={20}/>}<span>{copiedTech ? 'Copiado com Sucesso!' : 'Copiar para WhatsApp'}</span></button></div>
           </div>
         </div>
       )}
 
       {isAIModalOpen && <AIModal onClose={() => setIsAIModalOpen(false)} onSave={(t, c, cat) => { supabase.from('responses').insert({title: t, content: c, category: cat, last_updated: Date.now()}).then(loadLibrary); setIsAIModalOpen(false); }} />}
-      {isFormModalOpen && <ResponseFormModal isOpen={isFormModalOpen} onClose={() => {setIsFormModalOpen(false); setEditingResponse(null);}} onSave={(d) => {
-        if(editingResponse) supabase.from('responses').update({...d, last_updated: Date.now()}).eq('id', editingResponse.id).then(loadLibrary);
-        else supabase.from('responses').insert({...d, last_updated: Date.now()}).then(loadLibrary);
-        setIsFormModalOpen(false);
-      }} initialData={editingResponse} />}
+      {isFormModalOpen && <ResponseFormModal isOpen={isFormModalOpen} onClose={() => {setIsFormModalOpen(false); setEditingResponse(null);}} onSave={(d) => { if(editingResponse) supabase.from('responses').update({...d, last_updated: Date.now()}).eq('id', editingResponse.id).then(loadLibrary); else supabase.from('responses').insert({...d, last_updated: Date.now()}).then(loadLibrary); setIsFormModalOpen(false); }} initialData={editingResponse} />}
       {isApptModalOpen && <AppointmentModal onClose={() => setIsApptModalOpen(false)} onSave={loadCRM} />}
     </div>
   );
