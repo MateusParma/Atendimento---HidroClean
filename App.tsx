@@ -10,7 +10,8 @@ import {
   Calendar as CalendarIcon, ShieldCheck, DollarSign, Filter,
   ChevronDown, ArrowUpAZ, ArrowDownAZ, Columns, Bell, BellRing,
   Loader2, ClipboardList, File, Image as ImageIcon,
-  CheckCircle, XCircle, Info, BookOpen
+  CheckCircle, XCircle, Info, BookOpen, Eye, EyeOff,
+  AlertCircle, LogOut
 } from 'lucide-react';
 import { Category, SavedResponse, Appointment, ApptStage, Attachment } from './types';
 import { supabase } from './services/supabaseClient';
@@ -24,7 +25,7 @@ import KanbanView from './components/KanbanView';
 
 const STAGES: ApptStage[] = [
   'Leads', 'Visita Técnica', 'Orçamentos a Fazer', 'Relatórios a Fazer',
-  'Aguardando Resposta', 'Serviços a Fazer', 'Em Execução', 'Retrabalho',
+  'Aguardando Resposta', 'Serviços a Fazer', 'Em Execução', 'Retrabalho',
   'A Receber', 'Concluído', 'Recusados'
 ];
 
@@ -34,7 +35,7 @@ export const STAGE_COLORS: Record<ApptStage, { bg: string, text: string, border:
   'Orçamentos a Fazer': { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', dot: 'bg-amber-500' },
   'Relatórios a Fazer': { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200', dot: 'bg-indigo-500' },
   'Aguardando Resposta': { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', dot: 'bg-slate-500' },
-  'Serviços a Fazer': { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200', dot: 'bg-cyan-500' },
+  'Serviços a Fazer': { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200', dot: 'bg-cyan-500' },
   'Em Execução': { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200', dot: 'bg-orange-500' },
   'Retrabalho': { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200', dot: 'bg-rose-500' },
   'A Receber': { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200', dot: 'bg-yellow-500' },
@@ -47,7 +48,118 @@ const MONTHS = [
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
 ];
 
+// --- COMPONENTE DE LOGIN ---
+const LoginScreen: React.FC<{ onLogin: (remember: boolean) => void }> = ({ onLogin }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    const AUTH_EMAIL = 'comercialhidroclean@gmail.com';
+    const AUTH_PASS = 'HidroClean2020.';
+
+    if (email.toLowerCase().trim() === AUTH_EMAIL && password === AUTH_PASS) {
+      setTimeout(() => {
+        onLogin(rememberMe);
+      }, 800);
+    } else {
+      setTimeout(() => {
+        setError('Credenciais inválidas. Verifique os dados.');
+        setLoading(false);
+      }, 800);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[#F3F4F7] p-6 relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-200/20 blur-[120px] rounded-full -translate-y-1/2 translate-x-1/2"></div>
+      <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-indigo-100/30 blur-[120px] rounded-full translate-y-1/2 -translate-x-1/2"></div>
+      
+      <div className="w-full max-w-md bg-white rounded-[3rem] shadow-2xl border border-white p-10 relative z-10 animate-in fade-in zoom-in duration-500">
+        <div className="flex flex-col items-center mb-10">
+          <div className="bg-blue-600 p-4 rounded-[1.5rem] shadow-xl shadow-blue-100 mb-6">
+            <Droplets size={32} className="text-white" />
+          </div>
+          <h1 className="text-3xl font-black text-slate-800 tracking-tight">Hidro Clean</h1>
+          <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.3em] mt-2">Acesso Restrito Platinum</p>
+        </div>
+
+        <form onSubmit={handleLogin} className="space-y-6">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">E-mail</label>
+            <input 
+              type="email" 
+              required
+              className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-4 px-6 font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all text-sm"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Senha</label>
+            <div className="relative">
+              <input 
+                type={showPassword ? "text" : "password"} 
+                required
+                className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-4 px-6 font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all text-sm"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+              />
+              <button 
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between px-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input 
+                type="checkbox" 
+                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" 
+                checked={rememberMe}
+                onChange={e => setRememberMe(e.target.checked)}
+              />
+              <span className="text-[10px] font-black text-slate-500 uppercase">Manter Conectado</span>
+            </label>
+          </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-100 p-4 rounded-2xl flex items-center gap-3 text-red-600 animate-in fade-in slide-in-from-top-2">
+              <AlertCircle size={18} />
+              <p className="text-[10px] font-black uppercase tracking-tight">{error}</p>
+            </div>
+          )}
+
+          <button 
+            type="submit" 
+            disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-5 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-blue-100 flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-70"
+          >
+            {loading ? <Loader2 className="animate-spin" size={20} /> : <ShieldCheck size={20} />}
+            <span>{loading ? 'Autenticando...' : 'Entrar no Sistema'}</span>
+          </button>
+        </form>
+
+        <p className="text-center text-[9px] font-black text-slate-300 uppercase mt-12 tracking-[0.2em]">Hidro Clean Canalizações Lda.</p>
+      </div>
+    </div>
+  );
+};
+
 const App: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [view, setView] = useState<'crm' | 'calendar' | 'library'>('crm');
   const [sortMode, setSortMode] = useState<'stage' | 'time' | 'kanban'>('stage');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
@@ -79,9 +191,24 @@ const App: React.FC = () => {
   
   const [notifications, setNotifications] = useState<{id: string, msg: string}[]>([]);
 
-  useEffect(() => { loadLibrary(); loadCRM(); }, []);
+  useEffect(() => {
+    const session = localStorage.getItem('hc_auth');
+    if (session === 'true') {
+      setIsAuthenticated(true);
+    } else {
+      setIsAuthenticated(false);
+    }
+  }, []);
+
+  useEffect(() => { 
+    if (isAuthenticated) {
+      loadLibrary(); 
+      loadCRM(); 
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
+    if (!isAuthenticated) return;
     const checkReminders = async () => {
       const now = new Date();
       const todayStr = now.toISOString().split('T')[0];
@@ -112,10 +239,10 @@ const App: React.FC = () => {
 
     const interval = setInterval(checkReminders, 60000);
     return () => clearInterval(interval);
-  }, [appointments]);
+  }, [appointments, isAuthenticated]);
 
   useEffect(() => {
-    if (!selectedAppt) return;
+    if (!selectedAppt || !isAuthenticated) return;
     const timer = setTimeout(async () => {
       setIsSyncing(true);
       try {
@@ -151,7 +278,7 @@ const App: React.FC = () => {
       } catch (err) { console.error(err); } finally { setIsSyncing(false); }
     }, 1000);
     return () => clearTimeout(timer);
-  }, [selectedAppt]);
+  }, [selectedAppt, isAuthenticated]);
 
   const loadLibrary = async () => {
     const { data, error } = await supabase.from('responses').select('*').order('last_updated', { ascending: false });
@@ -160,7 +287,6 @@ const App: React.FC = () => {
       return;
     }
     if (data) {
-      // MAPEAMENTO CRÍTICO: Transforma snake_case do SQL em camelCase do App
       setResponses(data.map((item: any) => ({ 
         id: item.id,
         title: item.title,
@@ -174,6 +300,18 @@ const App: React.FC = () => {
   const loadCRM = async () => {
     const { data } = await supabase.from('appointments').select('*').order('scheduled_at', { ascending: false });
     if (data) setAppointments(data as Appointment[]);
+  };
+
+  const handleLoginSuccess = (remember: boolean) => {
+    setIsAuthenticated(true);
+    if (remember) {
+      localStorage.setItem('hc_auth', 'true');
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    localStorage.removeItem('hc_auth');
   };
 
   const handleWhatsApp = (phone?: string) => {
@@ -392,6 +530,14 @@ const App: React.FC = () => {
     );
   }, [responses, searchTerm]);
 
+  // Se estiver carregando estado inicial, não renderiza
+  if (isAuthenticated === null) return null;
+
+  // Se não autenticado, mostra tela de login
+  if (!isAuthenticated) {
+    return <LoginScreen onLogin={handleLoginSuccess} />;
+  }
+
   return (
     <div className="min-h-screen flex bg-[#F3F4F7]">
       <div className="fixed top-6 right-6 z-[200] space-y-3">
@@ -420,6 +566,9 @@ const App: React.FC = () => {
           </button>
         </nav>
         <div className="mt-auto pt-6 border-t border-slate-100">
+           <button onClick={handleLogout} className="flex items-center space-x-3 px-4 py-4 rounded-xl w-full text-slate-400 hover:text-red-600 font-black text-[10px] uppercase transition-all mb-4">
+             <LogOut size={18} /><span>Sair</span>
+           </button>
            <div className="bg-slate-50 p-4 rounded-2xl">
               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Assinatura</p>
               <p className="text-[10px] font-bold text-slate-600 uppercase">Platinum Smart v5.3</p>
@@ -775,7 +924,6 @@ const App: React.FC = () => {
         <AIModal 
           onClose={() => setIsAIModalOpen(false)} 
           onSave={async (t, c, cat) => { 
-            // ENVIA SNAKE_CASE PARA O BANCO
             const { error } = await supabase.from('responses').insert({
               title: t, 
               content: c, 
