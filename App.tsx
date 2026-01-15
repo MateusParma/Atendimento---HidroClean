@@ -10,7 +10,7 @@ import {
   Calendar as CalendarIcon, ShieldCheck, DollarSign, Filter,
   ChevronDown, ArrowUpAZ, ArrowDownAZ, Columns, Bell, BellRing,
   Loader2, ClipboardList, File, Image as ImageIcon,
-  CheckCircle, XCircle, Info
+  CheckCircle, XCircle, Info, BookOpen
 } from 'lucide-react';
 import { Category, SavedResponse, Appointment, ApptStage, Attachment } from './types';
 import { supabase } from './services/supabaseClient';
@@ -154,8 +154,21 @@ const App: React.FC = () => {
   }, [selectedAppt]);
 
   const loadLibrary = async () => {
-    const { data } = await supabase.from('responses').select('*').order('last_updated', { ascending: false });
-    if (data) setResponses(data.map((item: any) => ({ ...item, lastUpdated: Number(item.last_updated) })));
+    const { data, error } = await supabase.from('responses').select('*').order('last_updated', { ascending: false });
+    if (error) {
+      console.error("Erro ao carregar biblioteca do Supabase:", error);
+      return;
+    }
+    if (data) {
+      // MAPEAMENTO CRÍTICO: Transforma snake_case do SQL em camelCase do App
+      setResponses(data.map((item: any) => ({ 
+        id: item.id,
+        title: item.title,
+        content: item.content,
+        category: item.category as Category,
+        lastUpdated: item.last_updated ? Number(item.last_updated) : Date.now()
+      })));
+    }
   };
 
   const loadCRM = async () => {
@@ -326,8 +339,7 @@ const App: React.FC = () => {
     return groups;
   }, [filteredAppointments]);
 
-  // Fix: Explicitly define key property and correct React component typing
-  const AppointmentCard: React.FC<{ appt: Appointment; key?: string | number }> = ({ appt }) => {
+  const AppointmentCard: React.FC<{ appt: Appointment }> = ({ appt }) => {
     const now = new Date();
     const todayStr = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
     const isToday = appt.scheduled_at === todayStr;
@@ -372,6 +384,14 @@ const App: React.FC = () => {
     );
   };
 
+  const filteredResponses = useMemo(() => {
+    return responses.filter(r => 
+      r.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      r.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.category.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [responses, searchTerm]);
+
   return (
     <div className="min-h-screen flex bg-[#F3F4F7]">
       <div className="fixed top-6 right-6 z-[200] space-y-3">
@@ -390,26 +410,46 @@ const App: React.FC = () => {
         </div>
         <nav className="flex-1 space-y-1">
           <button onClick={() => setView('crm')} className={`flex items-center space-x-3 px-4 py-4 rounded-xl w-full transition-all ${view === 'crm' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50 font-bold'}`}>
-            <TrendingUp size={20} /><span className="text-sm">Pipeline</span>
+            <TrendingUp size={20} /><span className="text-sm">Pipeline (CRM)</span>
           </button>
           <button onClick={() => setView('calendar')} className={`flex items-center space-x-3 px-4 py-4 rounded-xl w-full transition-all ${view === 'calendar' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50 font-bold'}`}>
-            <CalendarBrand size={20} /><span className="text-sm">Agenda</span>
+            <CalendarBrand size={20} /><span className="text-sm">Agenda Técnica</span>
           </button>
           <button onClick={() => setView('library')} className={`flex items-center space-x-3 px-4 py-4 rounded-xl w-full transition-all ${view === 'library' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50 font-bold'}`}>
-            <MessageSquare size={20} /><span className="text-sm">Respostas</span>
+            <MessageSquare size={20} /><span className="text-sm">Respostas Rápidas</span>
           </button>
         </nav>
+        <div className="mt-auto pt-6 border-t border-slate-100">
+           <div className="bg-slate-50 p-4 rounded-2xl">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Assinatura</p>
+              <p className="text-[10px] font-bold text-slate-600 uppercase">Platinum Smart v5.3</p>
+           </div>
+        </div>
       </aside>
 
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         <header className="px-8 py-4 bg-white border-b border-slate-200 flex items-center justify-between">
           <div className="relative w-96">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            <input placeholder="Procurar lead..." className="w-full pl-11 pr-4 py-2 bg-slate-100 rounded-xl text-sm font-bold outline-none border border-transparent focus:border-blue-400" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+            <input 
+              placeholder={view === 'library' ? "Procurar respostas..." : "Procurar leads/serviços..."} 
+              className="w-full pl-11 pr-4 py-2 bg-slate-100 rounded-xl text-sm font-bold outline-none border border-transparent focus:border-blue-400" 
+              value={searchTerm} 
+              onChange={e => setSearchTerm(e.target.value)} 
+            />
           </div>
           <div className="flex items-center space-x-4">
-             <button onClick={() => setIsAIModalOpen(true)} className="p-2.5 bg-slate-900 text-white rounded-xl shadow-lg hover:scale-110 transition-transform"><Sparkles size={18} className="text-blue-400" /></button>
-             <button onClick={() => setIsApptModalOpen(true)} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-black text-xs shadow-xl uppercase tracking-widest flex items-center gap-2 hover:bg-blue-700 transition-all"><Plus size={16}/> Novo Lead</button>
+             {view === 'library' ? (
+                <>
+                  <button onClick={() => setIsAIModalOpen(true)} className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 shadow-lg hover:scale-105 transition-all"><Sparkles size={16} className="text-blue-400"/> Gerar com IA</button>
+                  <button onClick={() => { setEditingResponse(null); setIsFormModalOpen(true); }} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-black text-xs shadow-xl uppercase tracking-widest flex items-center gap-2 hover:bg-blue-700 transition-all"><Plus size={16}/> Nova Resposta</button>
+                </>
+             ) : (
+                <>
+                  <button onClick={() => setIsAIModalOpen(true)} className="p-2.5 bg-slate-900 text-white rounded-xl shadow-lg hover:scale-110 transition-transform"><Sparkles size={18} className="text-blue-400" /></button>
+                  <button onClick={() => setIsApptModalOpen(true)} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-black text-xs shadow-xl uppercase tracking-widest flex items-center gap-2 hover:bg-blue-700 transition-all"><Plus size={16}/> Novo Lead</button>
+                </>
+             )}
           </div>
         </header>
 
@@ -449,7 +489,6 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              {/* ÍNDICE DE CORES BONITO */}
               <div className="bg-white/60 border border-slate-200 rounded-3xl p-4 mb-8 flex flex-wrap items-center justify-center gap-4 shadow-sm animate-in fade-in duration-700">
                 <div className="flex items-center gap-1.5 mr-2 text-[9px] font-black text-slate-400 uppercase tracking-widest"><Info size={14}/> Legenda:</div>
                 {STAGES.map(stage => (
@@ -494,10 +533,39 @@ const App: React.FC = () => {
               </div>
             </>
           )}
+
           {view === 'calendar' && <FullCalendarView appointments={filteredAppointments} onEditAppt={setSelectedAppt} onNewAppt={() => setIsApptModalOpen(true)} onSendTech={handleGenerateOS} />}
+
           {view === 'library' && (
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {responses.map(res => <ResponseCard key={res.id} response={res} onEdit={r => { setEditingResponse(r); setIsFormModalOpen(true); }} onDelete={loadLibrary} onDragStart={()=>{}} onDragOver={()=>{}} onDragEnd={()=>{}} />)}
+             <div className="space-y-8 animate-in fade-in duration-500">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-blue-600 border border-slate-200 shadow-sm"><BookOpen size={24}/></div>
+                    <div><h2 className="text-2xl font-black text-slate-900">Biblioteca de Respostas</h2><p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Padrões de Atendimento Hidro Clean</p></div>
+                  </div>
+                </div>
+                
+                {filteredResponses.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredResponses.map(res => (
+                      <ResponseCard 
+                        key={res.id} 
+                        response={res} 
+                        onEdit={r => { setEditingResponse(r); setIsFormModalOpen(true); }} 
+                        onDelete={(id) => supabase.from('responses').delete().eq('id', id).then(loadLibrary)} 
+                        onDragStart={()=>{}} 
+                        onDragOver={()=>{}} 
+                        onDragEnd={()=>{}} 
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-24 bg-white/50 rounded-[3rem] border-2 border-dashed border-slate-200">
+                    <div className="bg-slate-200 p-8 rounded-full mb-6 text-slate-400 shadow-inner"><MessageSquare size={48}/></div>
+                    <p className="font-black text-xs text-slate-400 uppercase tracking-[0.3em]">Nenhuma resposta encontrada</p>
+                    <button onClick={() => setIsAIModalOpen(true)} className="mt-4 text-[10px] font-black text-blue-600 uppercase underline hover:text-blue-800">Gerar nova com IA</button>
+                  </div>
+                )}
              </div>
           )}
         </div>
@@ -518,7 +586,6 @@ const App: React.FC = () => {
                        {syncSuccess && <div className="flex items-center gap-2 text-[9px] font-black text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full"><Check size={12}/> Sincronizado</div>}
                     </div>
                     
-                    {/* BOTÕES DE AÇÃO RÁPIDA DE STATUS - CONFORME PRINT ANTERIOR */}
                     <div className="flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200 gap-1.5 ml-auto mr-4">
                         <button 
                           onClick={() => { handleMoveApptStage(selectedAppt.id, 'Concluído'); setSelectedAppt(null); }}
@@ -625,7 +692,7 @@ const App: React.FC = () => {
                        <p className="text-[10px] font-black text-slate-400 uppercase mb-4 ml-1 tracking-widest">Serviço</p>
                        <div className="relative">
                          <select className="w-full bg-blue-600 text-white rounded-[1.5rem] px-6 py-5 text-xs font-black uppercase shadow-xl shadow-blue-50 border-none outline-none appearance-none cursor-pointer hover:bg-blue-700 transition-all" value={selectedAppt.service_type} onChange={e => setSelectedAppt({...selectedAppt, service_type: e.target.value})}>
-                            {["Pesquisa de Fuga", "Desentupimentos", "Limpeza de Fossas", "Reparação Canalização", "Inspeção de Vídeo", "Outros"].map(opt => <option key={opt} value={opt}>{opt.toUpperCase()}</option>)}
+                            {["Pesquisa de Fuga", "Desentupimentos", "Limpeza de Fossas", "Canalização", "Remodelação", "Reparação Canalização", "Inspeção de Vídeo", "Outros"].map(opt => <option key={opt} value={opt}>{opt.toUpperCase()}</option>)}
                          </select>
                          <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none" size={18}/>
                        </div>
@@ -704,8 +771,49 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {isAIModalOpen && <AIModal onClose={() => setIsAIModalOpen(false)} onSave={(t, c, cat) => { supabase.from('responses').insert({title: t, content: c, category: cat, last_updated: Date.now()}).then(loadLibrary); setIsAIModalOpen(false); }} />}
-      {isFormModalOpen && <ResponseFormModal isOpen={isFormModalOpen} onClose={() => {setIsFormModalOpen(false); setEditingResponse(null);}} onSave={(d) => { if(editingResponse) supabase.from('responses').update({...d, last_updated: Date.now()}).eq('id', editingResponse.id).then(loadLibrary); else supabase.from('responses').insert({...d, last_updated: Date.now()}).then(loadLibrary); setIsFormModalOpen(false); }} initialData={editingResponse} />}
+      {isAIModalOpen && (
+        <AIModal 
+          onClose={() => setIsAIModalOpen(false)} 
+          onSave={async (t, c, cat) => { 
+            // ENVIA SNAKE_CASE PARA O BANCO
+            const { error } = await supabase.from('responses').insert({
+              title: t, 
+              content: c, 
+              category: cat, 
+              last_updated: Date.now()
+            });
+            if (error) console.error("Erro ao salvar resposta IA:", error);
+            loadLibrary(); 
+            setIsAIModalOpen(false); 
+          }} 
+        />
+      )}
+      
+      {isFormModalOpen && (
+        <ResponseFormModal 
+          isOpen={isFormModalOpen} 
+          onClose={() => {setIsFormModalOpen(false); setEditingResponse(null);}} 
+          onSave={async (d) => { 
+            const payload = {
+              title: d.title,
+              content: d.content,
+              category: d.category,
+              last_updated: Date.now()
+            };
+
+            if(editingResponse) {
+              const { error } = await supabase.from('responses').update(payload).eq('id', editingResponse.id);
+              if (error) console.error("Erro ao atualizar resposta:", error);
+            } else {
+              const { error } = await supabase.from('responses').insert(payload);
+              if (error) console.error("Erro ao inserir resposta:", error);
+            }
+            loadLibrary(); 
+            setIsFormModalOpen(false); 
+          }} 
+          initialData={editingResponse} 
+        />
+      )}
       {isApptModalOpen && <AppointmentModal onClose={() => setIsApptModalOpen(false)} onSave={loadCRM} />}
     </div>
   );
