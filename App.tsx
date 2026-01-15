@@ -326,7 +326,8 @@ const App: React.FC = () => {
     return groups;
   }, [filteredAppointments]);
 
-  const AppointmentCard = ({ appt }: { appt: Appointment }) => {
+  // Fix: Explicitly define key property and correct React component typing
+  const AppointmentCard: React.FC<{ appt: Appointment; key?: string | number }> = ({ appt }) => {
     const now = new Date();
     const todayStr = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
     const isToday = appt.scheduled_at === todayStr;
