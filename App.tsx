@@ -497,7 +497,7 @@ const App: React.FC = () => {
             <span className="text-2xl font-black">{new Date(appt.scheduled_at + 'T00:00:00').getDate()}</span>
             <span className="text-[10px] font-black uppercase">{isToday ? 'HOJE' : new Date(appt.scheduled_at + 'T00:00:00').toLocaleDateString('pt-PT', { weekday: 'short' }).toUpperCase()}</span>
           </div>
-          <div className="mt-2 text-[10px] font-black text-blue-700 bg-blue-50 px-2 py-1 rounded-lg border border-blue-200 flex items-center justify-center gap-1"><Clock size={12}/>{appt.start_time}</div>
+          <div className="mt-2 text-[10px] font-black text-blue-700 bg-blue-50 px-2 py-1 rounded-lg border border-blue-200 flex items-center justify-center gap-1"><Clock size={12}/>{appt.start_time}-{appt.end_time}</div>
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">

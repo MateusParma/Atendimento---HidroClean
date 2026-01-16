@@ -47,11 +47,11 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({ appointments, onEdi
   };
 
   const getDayAppts = (date: Date) => {
-    // Para comparar corretamente, formatamos a data do calendário para YYYY-MM-DD
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, '0');
     const d = String(date.getDate()).padStart(2, '0');
     const dateKey = `${y}-${m}-${d}`;
+    // Filtrar todos os compromissos que correspondam à data da célula, sem restrição de "hoje"
     return appointments.filter(a => a.scheduled_at === dateKey);
   };
 
@@ -111,7 +111,7 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({ appointments, onEdi
                   <div 
                     key={isoDate} 
                     className="border-r border-b border-slate-100 p-2 min-h-[120px] hover:bg-slate-50/50 transition-all group relative cursor-pointer"
-                    onClick={() => dayAppts.length === 0 ? onNewAppt(isoDate) : null}
+                    onClick={() => onEditAppt(dayAppts[0] || {} as any)}
                   >
                     <div className="flex justify-between items-center mb-1">
                       <span className={`w-7 h-7 flex items-center justify-center rounded-full text-xs font-black ${isToday ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 group-hover:text-slate-900'}`}>{date.getDate()}</span>
@@ -120,7 +120,7 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({ appointments, onEdi
                     <div className="space-y-1">
                       {dayAppts.slice(0, 3).map(a => (
                         <div key={a.id} onClick={(e) => { e.stopPropagation(); onEditAppt(a); }} className={`px-2 py-0.5 rounded-md text-[8px] font-black text-white truncate shadow-sm transition-transform hover:scale-105 ${a.tech_sent_at ? 'bg-emerald-600' : (serviceColors[a.service_type] || serviceColors['Outros'])}`}>
-                          <span className="opacity-80 mr-1">{a.start_time}</span> {a.customer_name}
+                          <span className="opacity-80 mr-1">{a.start_time}-{a.end_time}</span> {a.customer_name}
                         </div>
                       ))}
                       {dayAppts.length > 3 && <p className="text-[8px] font-black text-slate-400 text-center uppercase tracking-tighter mt-1">+ {dayAppts.length - 3} serviços</p>}
@@ -138,10 +138,25 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({ appointments, onEdi
             </div>
             {appointments.filter(a => {
               const d = new Date(a.scheduled_at + 'T00:00:00');
-              if (viewMode === 'day') return d.toDateString() === currentDate.toDateString();
-              const weekEnd = new Date(currentDate);
-              weekEnd.setDate(currentDate.getDate() + 7);
-              return d >= currentDate && d <= weekEnd;
+              if (viewMode === 'day') {
+                return d.toDateString() === currentDate.toDateString();
+              }
+              if (viewMode === 'week') {
+                const weekStart = new Date(currentDate);
+                weekStart.setDate(currentDate.getDate() - currentDate.getDay());
+                weekStart.setHours(0, 0, 0, 0);
+                
+                const weekEnd = new Date(weekStart);
+                weekEnd.setDate(weekStart.getDate() + 7);
+                weekEnd.setHours(23, 59, 59, 999);
+                
+                return d >= weekStart && d < weekEnd;
+              }
+              return false;
+            }).sort((a, b) => {
+              const dateA = new Date(a.scheduled_at + 'T' + (a.start_time || '00:00')).getTime();
+              const dateB = new Date(b.scheduled_at + 'T' + (b.start_time || '00:00')).getTime();
+              return dateA - dateB;
             }).map(appt => (
               <div 
                 key={appt.id} 

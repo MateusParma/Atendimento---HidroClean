@@ -106,7 +106,7 @@ const KanbanView: React.FC<KanbanViewProps> = ({ stages, appointments, onEditApp
                     </div>
                     <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-bold">
                       <Clock size={12} className="text-blue-500 shrink-0" />
-                      {new Date(appt.scheduled_at + 'T00:00:00').toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' })} • {appt.start_time}
+                      {new Date(appt.scheduled_at + 'T00:00:00').toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' })} • {appt.start_time}-{appt.end_time}
                     </div>
                   </div>
 
