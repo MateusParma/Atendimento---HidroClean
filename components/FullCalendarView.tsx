@@ -47,8 +47,12 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({ appointments, onEdi
   };
 
   const getDayAppts = (date: Date) => {
-    const iso = date.toISOString().split('T')[0];
-    return appointments.filter(a => a.scheduled_at === iso);
+    // Para comparar corretamente, formatamos a data do calendário para YYYY-MM-DD
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    const dateKey = `${y}-${m}-${d}`;
+    return appointments.filter(a => a.scheduled_at === dateKey);
   };
 
   return (
@@ -97,17 +101,21 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({ appointments, onEdi
                 if (!date) return <div key={`e-${idx}`} className="border-r border-b border-slate-50 bg-slate-50/10"></div>;
                 const dayAppts = getDayAppts(date);
                 const isToday = date.toDateString() === new Date().toDateString();
-                const iso = date.toISOString().split('T')[0];
+                
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const d = String(date.getDate()).padStart(2, '0');
+                const isoDate = `${y}-${m}-${d}`;
 
                 return (
                   <div 
-                    key={iso} 
+                    key={isoDate} 
                     className="border-r border-b border-slate-100 p-2 min-h-[120px] hover:bg-slate-50/50 transition-all group relative cursor-pointer"
-                    onClick={() => dayAppts.length === 0 ? onNewAppt(iso) : null}
+                    onClick={() => dayAppts.length === 0 ? onNewAppt(isoDate) : null}
                   >
                     <div className="flex justify-between items-center mb-1">
                       <span className={`w-7 h-7 flex items-center justify-center rounded-full text-xs font-black ${isToday ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 group-hover:text-slate-900'}`}>{date.getDate()}</span>
-                      <button onClick={(e) => { e.stopPropagation(); onNewAppt(iso); }} className="opacity-0 group-hover:opacity-100 p-1 bg-blue-50 text-blue-600 rounded-lg transition-all"><Plus size={12}/></button>
+                      <button onClick={(e) => { e.stopPropagation(); onNewAppt(isoDate); }} className="opacity-0 group-hover:opacity-100 p-1 bg-blue-50 text-blue-600 rounded-lg transition-all"><Plus size={12}/></button>
                     </div>
                     <div className="space-y-1">
                       {dayAppts.slice(0, 3).map(a => (
@@ -129,7 +137,7 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({ appointments, onEdi
               <h3 className="text-xl font-black text-slate-900 uppercase">Lista de Trabalhos</h3>
             </div>
             {appointments.filter(a => {
-              const d = new Date(a.scheduled_at);
+              const d = new Date(a.scheduled_at + 'T00:00:00');
               if (viewMode === 'day') return d.toDateString() === currentDate.toDateString();
               const weekEnd = new Date(currentDate);
               weekEnd.setDate(currentDate.getDate() + 7);
@@ -141,8 +149,8 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({ appointments, onEdi
                 onClick={() => onEditAppt(appt)}
               >
                 <div className={`w-16 h-16 border-2 rounded-2xl flex flex-col items-center justify-center transition-all ${appt.tech_sent_at ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-blue-50 border-blue-600 text-blue-600'}`}>
-                  <span className="text-xl font-black">{new Date(appt.scheduled_at).getDate()}</span>
-                  <span className="text-[8px] font-black uppercase">{new Date(appt.scheduled_at).toLocaleDateString('pt-PT', { month: 'short' })}</span>
+                  <span className="text-xl font-black">{new Date(appt.scheduled_at + 'T00:00:00').getDate()}</span>
+                  <span className="text-[8px] font-black uppercase">{new Date(appt.scheduled_at + 'T00:00:00').toLocaleDateString('pt-PT', { month: 'short' })}</span>
                 </div>
                 <div className="flex-1">
                   <div className={`flex items-center space-x-2 text-[9px] font-black uppercase tracking-widest ${appt.tech_sent_at ? 'text-emerald-600' : 'text-blue-600'}`}><Clock size={12}/> <span>{appt.start_time} - {appt.end_time}</span></div>

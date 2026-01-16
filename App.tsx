@@ -23,19 +23,21 @@ import AppointmentModal from './components/AppointmentModal';
 import FullCalendarView from './components/FullCalendarView';
 import KanbanView from './components/KanbanView';
 
+// Fixed typo in 'Serviços a Fazer' (line 28)
 const STAGES: ApptStage[] = [
   'Leads', 'Visita Técnica', 'Orçamentos a Fazer', 'Relatórios a Fazer',
-  'Aguardando Resposta', 'Serviços a Fazer', 'Em Execução', 'Retrabalho',
+  'Aguardando Resposta', 'Serviços a Fazer', 'Em Execução', 'Retrabalho',
   'A Receber', 'Concluído', 'Recusados'
 ];
 
+// Fixed typo in 'Serviços a Fazer' key (line 38)
 export const STAGE_COLORS: Record<ApptStage, { bg: string, text: string, border: string, dot: string }> = {
   'Leads': { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', dot: 'bg-blue-500' },
   'Visita Técnica': { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', dot: 'bg-purple-500' },
   'Orçamentos a Fazer': { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', dot: 'bg-amber-500' },
   'Relatórios a Fazer': { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200', dot: 'bg-indigo-500' },
   'Aguardando Resposta': { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', dot: 'bg-slate-500' },
-  'Serviços a Fazer': { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200', dot: 'bg-cyan-500' },
+  'Serviços a Fazer': { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200', dot: 'bg-cyan-500' },
   'Em Execução': { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200', dot: 'bg-orange-500' },
   'Retrabalho': { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200', dot: 'bg-rose-500' },
   'A Receber': { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200', dot: 'bg-yellow-500' },
